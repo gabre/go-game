@@ -1,1 +1,1 @@
-# go-game
+#sss-gameGo version to use:go version go1.8rc2 linux/amd64To install gom:go get github.com/mattn/gom
