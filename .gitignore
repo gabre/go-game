@@ -2,11 +2,16 @@
 *.o
 *.a
 *.so
+go-game
 
 # Folders
 _obj
 _test
 _vendor
+
+# Vendoring and Vendor JSON
+vendor
+!vendor/vendor.json
 
 # Architecture specific extensions/prefixes
 *.[568vq]

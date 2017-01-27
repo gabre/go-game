@@ -1,0 +1,110 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "w4if4AcEF9xR+C9JgWtziOLMlBY=",
+			"path": "azul3d.org/engine/gfx",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "AR2WjoNIyhONXRVE1adhf6afaB4=",
+			"path": "azul3d.org/engine/gfx/camera",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "vKMsD3WZOCAJPZsmsoE3Itumk8s=",
+			"path": "azul3d.org/engine/gfx/clock",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "uJj6uE92JrvoFe+07bW/rwPreBI=",
+			"path": "azul3d.org/engine/gfx/gl2",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "OsSk8vZ5k/n4BnvEzs1YlS1e01E=",
+			"path": "azul3d.org/engine/gfx/internal/gl/2.0/gl",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "lzpN1NKasRpEUca8kCUsEPP83G4=",
+			"path": "azul3d.org/engine/gfx/internal/glc",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "7DP5sA93enidaW8L9Ak3JsRxTns=",
+			"path": "azul3d.org/engine/gfx/internal/gles2/2.0/gles2",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "rUtzz91n07xvV/cL9rVXMPXozbU=",
+			"path": "azul3d.org/engine/gfx/internal/glutil",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "wgw9J5g6zXUqzUhHTf3T8kCYRIU=",
+			"path": "azul3d.org/engine/gfx/internal/resize",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "etPLhcUdR486zn9S0aQ+vjRL7pw=",
+			"path": "azul3d.org/engine/gfx/internal/tag",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "wIyqEjysRFpyyELI7kltFAgPlIY=",
+			"path": "azul3d.org/engine/gfx/internal/util",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "7NV0j/4p3d/X0johIZxnJXKGh4s=",
+			"path": "azul3d.org/engine/gfx/window",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "01+AD+3qCTFjLib7OWkdGy2qkUw=",
+			"path": "azul3d.org/engine/keyboard",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "68OhvDq4+wJynYkM3Yy1deZp/bc=",
+			"path": "azul3d.org/engine/lmath",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "U88+5mfZlkdJgzg8LDp964Lc1R4=",
+			"path": "azul3d.org/engine/mouse",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "auNx8jXvn5qwCIiCI+7qdvc6O/g=",
+			"path": "azul3d.org/engine/tmx",
+			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
+			"revisionTime": "2016-08-17T21:32:15Z"
+		},
+		{
+			"checksumSHA1": "mkbtasagPoieaODTCLWx2A3lBBU=",
+			"path": "github.com/go-gl/glfw/v3.1/glfw",
+			"revision": "eecd6608b5674c04450c6e27b207340a57d27348",
+			"revisionTime": "2017-01-24T09:12:34Z",
+			"tree": true
+		}
+	],
+	"rootPath": "go-game"
+}
