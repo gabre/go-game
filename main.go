@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"image"
 	_ "image/png"
@@ -15,6 +14,32 @@ import (
 	"azul3d.org/engine/mouse"
 	"azul3d.org/engine/tmx"
 )
+
+type MapGenerator interface {
+	GenerateMap() (*tmx.Map, map[string]map[string]*gfx.Object)
+}
+
+type MapLoader struct {}
+
+func (m MapLoader) GenerateMap() (*tmx.Map, map[string]map[string]*gfx.Object) {
+	tmxMap, layers, err := tmx.LoadFile(defaultMapFile, nil)
+	if err != nil {
+		log.Panicf("Error when loading map: %s", err)
+	}
+	return tmxMap, layers
+}
+
+type GameEngine struct {
+	mapGenerator MapGenerator
+	cam *camera.Camera
+	d gfx.Device
+	camZoom float64
+	w window.Window
+}
+
+func NewGameEngine(generator MapGenerator) *GameEngine {
+	return &GameEngine{mapGenerator: generator, camZoom: 1.0}
+}
 
 // setOrthoScale sets the camera's projection matrix to an orthographic one
 // using the given viewing rectangle. It performs scaling with the viewing
@@ -32,90 +57,48 @@ func setOrthoScale(c *camera.Camera, view image.Rectangle, scale float64) {
 	c.P = gfx.ConvertMat4(m)
 }
 
-// gfxLoop is responsible for drawing things to the window.
-func gfxLoop(w window.Window, d gfx.Device) {
-	// Create a new orthographic (2D) camera.
-	cam := camera.NewOrtho(d.Bounds())
-	camZoom := 1.0       // 1x zoom
-	camZoomSpeed := 0.01 // 0.01x zoom for each scroll wheel click.
-	camMinZoom := 0.1
-
-	// updateCamera simply calls setOrthoScale with the values above.
-	updateCamera := func() {
-		if camZoom < camMinZoom {
-			camZoom = camMinZoom
-		}
-		setOrthoScale(cam, d.Bounds(), camZoom)
+func (e *GameEngine) updateCamera() {
+	if e.camZoom < camMinZoom {
+		e.camZoom = camMinZoom
 	}
+	setOrthoScale(e.cam, e.d.Bounds(), e.camZoom)
+}
 
-	// Update the camera now.
-	updateCamera()
-
-	// Move the camera back two units away from the card.
-	cam.SetPos(lmath.Vec3{0, -2, 0})
-
-	// Load TMX map file.
-	tmxMap, layers, err := tmx.LoadFile(*mapFile, nil)
-	if err != nil {
-		log.Println("An error happened.")
-		log.Fatal(err)
-	}
-
+func getEventMask() window.EventMask {
 	// Create an event mask for the events we are interested in.
 	evMask := window.FramebufferResizedEvents
 	evMask |= window.CursorMovedEvents
 	evMask |= window.MouseEvents
 	evMask |= window.MouseScrolledEvents
 	evMask |= window.KeyboardTypedEvents
+	return evMask
+}
+
+// gfxLoop is responsible for drawing things to the window.
+func (e *GameEngine) GfxLoop(w window.Window, d gfx.Device) {
+	e.w = w
+	e.d = d
+	// Create a new orthographic (2D) camera.
+	e.cam = camera.NewOrtho(d.Bounds())
+
+	// Update the camera now.
+	e.updateCamera()
+
+	// Move the camera back two units away from the card.
+	e.cam.SetPos(lmath.Vec3{0, -2, 0})
+
+	// Load TMX map file.
+	tmxMap, layers := e.mapGenerator.GenerateMap()
 
 	// Create a channel of events.
 	events := make(chan window.Event, 256)
 
 	// Have the window notify our channel whenever events occur.
-	w.Notify(events, evMask)
-
-	handleEvent := func(e window.Event) {
-		switch ev := e.(type) {
-		case window.FramebufferResized:
-			// Update the camera's to account for the new width and height.
-			updateCamera()
-
-		case mouse.ButtonEvent:
-			if ev.Button == mouse.Left && ev.State == mouse.Up {
-				// Toggle mouse grab.
-				props := w.Props()
-				props.SetCursorGrabbed(!props.CursorGrabbed())
-				w.Request(props)
-			}
-
-		case mouse.Scrolled:
-			// Zoom and update the camera.
-			camZoom -= ev.Y * camZoomSpeed
-			updateCamera()
-
-		case window.CursorMoved:
-			if ev.Delta {
-				p := lmath.Vec3{ev.X, 0, -ev.Y}
-				p = p.MulScalar(camZoom)
-				cam.SetPos(cam.Pos().Add(p))
-			}
-
-		case keyboard.Typed:
-			switch ev.S {
-			case "m":
-				// Toggle MSAA now.
-				msaa := !d.MSAA()
-				d.SetMSAA(msaa)
-				fmt.Println("MSAA Enabled?", msaa)
-			case "r":
-				cam.SetPos(lmath.Vec3{0, -2, 0})
-			}
-		}
-	}
+	w.Notify(events, getEventMask())
 
 	for {
 		// Handle events.
-		window.Poll(events, handleEvent)
+		window.Poll(events, e.handlEvent)
 
 		// Clear color and depth buffers.
 		d.Clear(d.Bounds(), gfx.Color{1, 1, 1, 1})
@@ -126,7 +109,7 @@ func gfxLoop(w window.Window, d gfx.Device) {
 			objects, ok := layers[layer.Name]
 			if ok {
 				for _, obj := range objects {
-					d.Draw(d.Bounds(), obj, cam)
+					d.Draw(d.Bounds(), obj, e.cam)
 				}
 			}
 		}
@@ -136,15 +119,52 @@ func gfxLoop(w window.Window, d gfx.Device) {
 	}
 }
 
-var (
-	defaultMapFile ="data/test_base64.tmx"
-	mapFile        = flag.String("file", defaultMapFile, "tmx map file to load")
-)
+func (e *GameEngine) handlEvent(event window.Event) {
+	switch ev := event.(type) {
+	case window.FramebufferResized:
+		// Update the camera's to account for the new width and height.
+		e.updateCamera()
 
-func init() {
-	flag.Parse()
+	case mouse.ButtonEvent:
+		if ev.Button == mouse.Left && ev.State == mouse.Up {
+			// Toggle mouse grab.
+			props := e.w.Props()
+			props.SetCursorGrabbed(!props.CursorGrabbed())
+			e.w.Request(props)
+		}
+
+	case mouse.Scrolled:
+		// Zoom and update the camera.
+		e.camZoom -= ev.Y * camZoomSpeed
+		e.updateCamera()
+
+	case window.CursorMoved:
+		if ev.Delta {
+			p := lmath.Vec3{ev.X, 0, -ev.Y}
+			p = p.MulScalar(e.camZoom)
+			e.cam.SetPos(e.cam.Pos().Add(p))
+		}
+
+	case keyboard.Typed:
+		switch ev.S {
+		case "m":
+			// Toggle MSAA now.
+			msaa := !e.d.MSAA()
+			e.d.SetMSAA(msaa)
+			fmt.Println("MSAA Enabled?", msaa)
+		case "r":
+			e.cam.SetPos(lmath.Vec3{0, -2, 0})
+		}
+	}
 }
 
+
+const defaultMapFile = "data/test_base64.tmx"
+const camZoomSpeed = 0.01 // 0.01x zoom for each scroll wheel click.
+const camMinZoom = 0.1
+
 func main() {
-	window.Run(gfxLoop, nil)
+	mg := MapLoader{}
+	ge := NewGameEngine(mg)
+	window.Run(ge.GfxLoop, nil)
 }
