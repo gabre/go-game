@@ -10,6 +10,7 @@ import (
 	"azul3d.org/engine/keyboard"
 	"azul3d.org/engine/lmath"
 	"azul3d.org/engine/mouse"
+	"log"
 )
 
 const camZoomSpeed = 0.01 // 0.01x zoom for each scroll wheel click.
@@ -48,7 +49,13 @@ func (e *GameEngine) GfxLoop(w window.Window, d gfx.Device) {
 	e.cam.SetPos(lmath.Vec3{0, -2, 0})
 
 	// Load TMX map file.
-	tmxMap, layers := e.mapGenerator.GenerateMap()
+	log.Printf("GfxLoop\n")
+	layers, err := e.mapGenerator.GenerateMap(0, 0)
+	log.Printf("Layers: %s\n", layers)
+
+	if err != nil {
+		log.Panicf("Error while generating map: ", err)
+	}
 
 	// Create a channel of events.
 	events := make(chan window.Event, 256)
@@ -57,6 +64,7 @@ func (e *GameEngine) GfxLoop(w window.Window, d gfx.Device) {
 	w.Notify(events, getEventMask())
 
 	for {
+		log.Printf("Start draw\n")
 		// Handle events.
 		window.Poll(events, e.handlEvent)
 
@@ -65,12 +73,9 @@ func (e *GameEngine) GfxLoop(w window.Window, d gfx.Device) {
 		d.ClearDepth(d.Bounds(), 1.0)
 
 		// Draw the TMX map to the screen.
-		for _, layer := range tmxMap.Layers {
-			objects, ok := layers[layer.Name]
-			if ok {
-				for _, obj := range objects {
-					d.Draw(d.Bounds(), obj, e.cam)
-				}
+		for _, layer := range layers {
+			for _, obj := range layer {
+				d.Draw(d.Bounds(), obj, e.cam)
 			}
 		}
 

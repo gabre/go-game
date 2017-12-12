@@ -27,6 +27,10 @@
 			"revisionTime": "2016-08-17T21:32:15Z"
 		},
 		{
+			"path": "azul3d.org/engine/gfx/gles2",
+			"revision": ""
+		},
+		{
 			"checksumSHA1": "OsSk8vZ5k/n4BnvEzs1YlS1e01E=",
 			"path": "azul3d.org/engine/gfx/internal/gl/2.0/gl",
 			"revision": "5bbe5b6bfdeece8491e0492ba11bb8ed520ecde4",
@@ -99,11 +103,29 @@
 			"revisionTime": "2016-08-17T21:32:15Z"
 		},
 		{
+			"checksumSHA1": "I/uQDNj/ee1Poq0ofmrZ7hHIExM=",
+			"path": "github.com/aquilax/go-perlin",
+			"revision": "3f94c9ea34d768756427abfea3b6a7d3bfbc71ca",
+			"revisionTime": "2015-04-12T07:24:37Z"
+		},
+		{
 			"checksumSHA1": "mkbtasagPoieaODTCLWx2A3lBBU=",
 			"path": "github.com/go-gl/glfw/v3.1/glfw",
 			"revision": "eecd6608b5674c04450c6e27b207340a57d27348",
 			"revisionTime": "2017-01-24T09:12:34Z",
 			"tree": true
+		},
+		{
+			"checksumSHA1": "yIkYzW7bzAD81zHyuCNmEj4+oxQ=",
+			"path": "github.com/gopherjs/gopherjs/js",
+			"revision": "444abdf920945de5d4a977b572bcc6c674d1e4eb",
+			"revisionTime": "2017-11-02T03:40:23Z"
+		},
+		{
+			"checksumSHA1": "BP73bXx2uEGZ9A2QDmfeKO2z9h0=",
+			"path": "github.com/gopherjs/webgl",
+			"revision": "a2d36020a9b2af0f7aefb23467ab48f3b501beec",
+			"revisionTime": "2015-02-22T22:16:19Z"
 		}
 	],
 	"rootPath": "go-game"

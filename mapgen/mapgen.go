@@ -2,9 +2,11 @@ package mapgen
 
 import (
 	"azul3d.org/engine/gfx"
-	"azul3d.org/engine/tmx"
 )
 
+type LayerNames = []string
+type ObjectMap = map[string]map[string]*gfx.Object
+
 type MapGenerator interface {
-	GenerateMap() (*tmx.Map, map[string]map[string]*gfx.Object)
+	GenerateMap(x int64, z int64) (ObjectMap, error)
 }
