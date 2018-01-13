@@ -1,9 +1,8 @@
 package noisegen
 
 import (
-"github.com/aquilax/go-perlin"
+	"github.com/aquilax/go-perlin"
 	"math"
-	"log"
 )
 
 const iterations int = 1
@@ -21,7 +20,6 @@ func New(seed int64) NoiseGen {
 
 func (p NoiseGen) GetNoise(x float64, z float64) float64 {
 	v := p.perlinGen.Noise2D(x, z)
-	log.Printf("X Z V %f %f %f", x, z, v)
 	return v
 }
 

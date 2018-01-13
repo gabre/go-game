@@ -1,124 +1,117 @@
 package engine
 
 import (
-	"fmt"
 	"go-game/mapgen"
-
-	"azul3d.org/engine/gfx"
-	"azul3d.org/engine/gfx/camera"
-	"azul3d.org/engine/gfx/window"
-	"azul3d.org/engine/keyboard"
-	"azul3d.org/engine/lmath"
-	"azul3d.org/engine/mouse"
+	"engo.io/ecs"
+	"engo.io/engo"
+	"engo.io/engo/common"
 	"log"
+	"image/color"
 )
 
 const camZoomSpeed = 0.01 // 0.01x zoom for each scroll wheel click.
 const camMinZoom = 0.1
 
+type Tile struct {
+	ecs.BasicEntity
+	common.RenderComponent
+	common.SpaceComponent
+}
+
 type GameEngine struct {
-	mapGenerator mapgen.MapGenerator
-	cam          *camera.Camera
-	d            gfx.Device
-	camZoom      float64
-	w            window.Window
+	mapGenFactory func() (mapgen.MapGenerator, error)
+	mapGenerator  mapgen.MapGenerator
+	camZoom       float64
+	renderSystem  *common.RenderSystem
 }
 
-func NewGameEngine(generator mapgen.MapGenerator) *GameEngine {
-	return &GameEngine{mapGenerator: generator, camZoom: 1.0}
+func NewGameEngine(generatorFactory func()(mapgen.MapGenerator, error)) *GameEngine {
+	return &GameEngine{mapGenFactory: generatorFactory, camZoom: 1.0}
 }
 
-func (e *GameEngine) updateCamera() {
-	if e.camZoom < camMinZoom {
-		e.camZoom = camMinZoom
+func (e *GameEngine) Type() string {
+	return "GameEngine"
+}
+
+func (e *GameEngine) Preload() {
+	if (e.mapGenerator == nil) {
+		var err error
+		e.mapGenerator, err = e.mapGenFactory()
+		if (err != nil) {
+			log.Panicf("Map generation error: %s", err)
+		}
 	}
-	setOrthoScale(e.cam, e.d.Bounds(), e.camZoom)
 }
 
-// gfxLoop is responsible for drawing things to the window.
-func (e *GameEngine) GfxLoop(w window.Window, d gfx.Device) {
-	e.w = w
-	e.d = d
-	// Create a new orthographic (2D) camera.
-	e.cam = camera.NewOrtho(d.Bounds())
+func (e *GameEngine) Setup(w *ecs.World) {
+	common.SetBackground(color.White)
+	w.AddSystem(&common.RenderSystem{})
+	for _, system := range w.Systems() {
+		switch sys := system.(type) {
+		case *common.RenderSystem:
+			e.renderSystem = sys
+		}
+	}
 
-	// Update the camera now.
-	e.updateCamera()
+	e.renderMapCoords(0,0)
+}
 
-	// Move the camera back two units away from the card.
-	e.cam.SetPos(lmath.Vec3{0, -2, 0})
-
-	// Load TMX map file.
-	log.Printf("GfxLoop\n")
-	layers, err := e.mapGenerator.GenerateMap(0, 0)
-	log.Printf("Layers: %s\n", layers)
-
+func (e *GameEngine) renderMapCoords(x int64, z int64) {
+	levelData, err := e.mapGenerator.GenerateMap(x, z)
 	if err != nil {
-		log.Panicf("Error while generating map: ", err)
+		log.Panicf("Error while generating map: %s", err)
 	}
+	e.renderTiles(levelData)
+}
 
-	// Create a channel of events.
-	events := make(chan window.Event, 256)
+func (e *GameEngine) renderTiles(levelData *common.Level) {
+	// Create render and space components for each of the tiles in all layers
+	tileComponents := make([]*Tile, 0)
 
-	// Have the window notify our channel whenever events occur.
-	w.Notify(events, getEventMask())
+	for _, tileLayer := range levelData.TileLayers {
 
-	for {
-		log.Printf("Start draw\n")
-		// Handle events.
-		window.Poll(events, e.handlEvent)
+		for _, tileElement := range tileLayer.Tiles {
 
-		// Clear color and depth buffers.
-		d.Clear(d.Bounds(), gfx.Color{1, 1, 1, 1})
-		d.ClearDepth(d.Bounds(), 1.0)
+			if tileElement.Image != nil {
 
-		// Draw the TMX map to the screen.
-		for _, layer := range layers {
-			for _, obj := range layer {
-				d.Draw(d.Bounds(), obj, e.cam)
+				tile := &Tile{BasicEntity: ecs.NewBasic()}
+				tile.RenderComponent = common.RenderComponent{
+					Drawable: tileElement,
+					Scale:    engo.Point{1, 1},
+				}
+				tile.SpaceComponent = common.SpaceComponent{
+					Position: tileElement.Point,
+					Width:    0,
+					Height:   0,
+				}
+
+				tileComponents = append(tileComponents, tile)
 			}
 		}
-
-		// Render the whole frame.
-		d.Render()
 	}
-}
 
-func (e *GameEngine) handlEvent(event window.Event) {
-	switch ev := event.(type) {
-	case window.FramebufferResized:
-		// Update the camera's to account for the new width and height.
-		e.updateCamera()
+	// Do the same for all image layers
+	for _, imageLayer := range levelData.ImageLayers {
+		for _, imageElement := range imageLayer.Images {
+			if imageElement.Image != nil {
+				tile := &Tile{BasicEntity: ecs.NewBasic()}
+				tile.RenderComponent = common.RenderComponent{
+					Drawable: imageElement,
+					Scale:    engo.Point{1, 1},
+				}
+				tile.SpaceComponent = common.SpaceComponent{
+					Position: imageElement.Point,
+					Width:    0,
+					Height:   0,
+				}
 
-	case mouse.ButtonEvent:
-		if ev.Button == mouse.Left && ev.State == mouse.Up {
-			// Toggle mouse grab.
-			props := e.w.Props()
-			props.SetCursorGrabbed(!props.CursorGrabbed())
-			e.w.Request(props)
+				tileComponents = append(tileComponents, tile)
+			}
 		}
+	}
 
-	case mouse.Scrolled:
-		// Zoom and update the camera.
-		e.camZoom -= ev.Y * camZoomSpeed
-		e.updateCamera()
-
-	case window.CursorMoved:
-		if ev.Delta {
-			p := lmath.Vec3{ev.X, 0, -ev.Y}
-			p = p.MulScalar(e.camZoom)
-			e.cam.SetPos(e.cam.Pos().Add(p))
-		}
-
-	case keyboard.Typed:
-		switch ev.S {
-		case "m":
-			// Toggle MSAA now.
-			msaa := !e.d.MSAA()
-			e.d.SetMSAA(msaa)
-			fmt.Println("MSAA Enabled?", msaa)
-		case "r":
-			e.cam.SetPos(lmath.Vec3{0, -2, 0})
-		}
+	// Add each of the tiles entities and its components to the render system
+	for _, v := range tileComponents {
+		e.renderSystem.Add(&v.BasicEntity, &v.RenderComponent, &v.SpaceComponent)
 	}
 }

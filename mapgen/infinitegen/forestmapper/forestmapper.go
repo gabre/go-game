@@ -2,52 +2,57 @@ package forestmapper
 
 import (
 	"go-game/mapgen/infinitegen/noisegen"
-	"azul3d.org/engine/tmx"
 	"go-game/mapgen/infinitegen/types"
-	"log"
+	"engo.io/engo/common"
+	"engo.io/engo"
 )
 
 const grassGid = 299
 const treeGid = 1025
 
-type forestMapper struct {}
+type forestMapper struct{}
 
 func New() forestMapper {
 	return forestMapper{}
 }
 
-func (f forestMapper) MapFields(noiseGen noisegen.NoiseGen, terrain types.Terrain, resolution int) (Layers []*tmx.Layer) {
-	grass := make(map[tmx.Coord]uint32)
-	bushes := make(map[tmx.Coord]uint32)
-	trees := make(map[tmx.Coord]uint32)
-	for x, row := range terrain {
-		for y, value := range row {
-			coord := tmx.Coord{x, y}
-			log.Print("....")
-			mapGrass(coord, value, grass)
-			mapBush(coord, value, bushes)
-			mapTree(coord, value, trees)
+func (f forestMapper) MapFields(noiseGen noisegen.NoiseGen, terrain types.Terrain, resolution int, tileset map[int]*common.Tile) (Layers []*common.TileLayer) {
+	grass := make([]*common.Tile, 0)
+	bushes := make([]*common.Tile, 0)
+	trees := make([]*common.Tile, 0)
+	for row, _ := range terrain {
+		for col, _ := range terrain {
+			uniformW := tileset[grassGid].Image.Width()
+			uniformH := tileset[grassGid].Image.Height()
+			coord := engo.Point{float32(col) * uniformW, float32(row) * uniformH}
+			grass = mapGrass(coord, terrain[col][row], grass, tileset)
+			bushes = mapBush(coord, terrain[col][row], bushes)
+			trees = mapTree(coord, terrain[col][row], trees, tileset)
+			// get the tilesheets in order and in generic format
+			// sort.Sort(common.ByFirstgid(tmxLevel.Tilesets))
+			// ts := make([]*tilesheet, len(tmxLevel.Tilesets))
+			// for i, tts := range tmxLevel.Tilesets {
+			//	ts[i] = &tilesheet{tts.Image, tts.Firstgid}
+			// }
 		}
 	}
-	layerGrass := tmx.Layer{Name:"grass", Opacity:0, Visible:true, Tiles:grass}
-	layerBush := tmx.Layer{Name:"bushes", Opacity:0, Visible:true, Tiles:bushes}
-	layerTree := tmx.Layer{Name:"trees", Opacity:0, Visible:true, Tiles:trees}
-	log.Print(layerTree)
-	return []*tmx.Layer{&layerGrass, &layerTree, &layerBush}
+	layerGrass := common.TileLayer{Name: "grass", Tiles: grass}
+	layerBush := common.TileLayer{Name: "bushes", Tiles: bushes}
+	layerTree := common.TileLayer{Name: "trees", Tiles: trees}
+	return []*common.TileLayer{&layerGrass, &layerTree, &layerBush}
 }
 
-func mapGrass(coord tmx.Coord, value float64, m map[tmx.Coord]uint32) {
-	m[coord] = grassGid
+func mapGrass(coord engo.Point, value float64, a []*common.Tile, tileset map[int]*common.Tile) []*common.Tile {
+	return append(a, &common.Tile{coord, tileset[grassGid].Image})
 }
 
-func mapBush(coord tmx.Coord, value float64, m map[tmx.Coord]uint32) {
-
+func mapBush(coord engo.Point, value float64, a []*common.Tile) []*common.Tile {
+	return a
 }
 
-func mapTree(coord tmx.Coord, value float64, m map[tmx.Coord]uint32) {
-	log.Printf("Value: %f,   %f", value, noisegen.GetRangeMax())
-	if value > 0.1 {
-		log.Print("Beep!")
-		m[coord] = treeGid
+func mapTree(coord engo.Point, value float64, a []*common.Tile, tileset map[int]*common.Tile) []*common.Tile {
+	if value > 0.06 {
+		a = append(a, &common.Tile{coord, tileset[treeGid].Image})
 	}
+	return a
 }

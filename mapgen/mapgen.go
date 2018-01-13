@@ -1,12 +1,11 @@
 package mapgen
 
 import (
-	"azul3d.org/engine/gfx"
+	"engo.io/engo/common"
 )
 
 type LayerNames = []string
-type ObjectMap = map[string]map[string]*gfx.Object
 
 type MapGenerator interface {
-	GenerateMap(x int64, z int64) (ObjectMap, error)
+	GenerateMap(x int64, z int64) (*common.Level, error)
 }

@@ -1,20 +1,32 @@
 package main
 
 import (
-	"go-game/engine"
-
-	"azul3d.org/engine/gfx/window"
 	"go-game/mapgen/infinitegen"
 	"log"
-	// "go-game/mapgen/loader"
+	"go-game/engine"
+	"engo.io/engo"
+	"path/filepath"
+	"go-game/mapgen"
 )
 
 func main() {
-	// mg := loader.MapLoader{}
-	mg, err := infinitegen.New(10, 30)
-	if err != nil {
-		log.Panicf("Map generation error: %s", err)
+	factory := func() (mapgen.MapGenerator, error) {
+		return infinitegen.New(10, 30)
 	}
-	ge := engine.NewGameEngine(mg)
-	window.Run(ge.GfxLoop, nil)
+	ge := engine.NewGameEngine(factory)
+	opts := engo.RunOptions{
+		Title:  "TileMap Demo",
+		Width:  800,
+		Height: 800,
+		AssetsRoot: getCwd(),
+	}
+	engo.Run(opts, ge)
+}
+
+func getCwd() string {
+	fp, err := filepath.Abs(".")
+	if err != nil {
+		log.Panicf("Unable to get current working directory.")
+	}
+	return fp
 }
