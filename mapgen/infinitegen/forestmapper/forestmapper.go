@@ -5,6 +5,7 @@ import (
 	"go-game/mapgen/infinitegen/types"
 	"engo.io/engo/common"
 	"engo.io/engo"
+	"fmt"
 )
 
 const grassGid = 299
@@ -16,43 +17,43 @@ func New() forestMapper {
 	return forestMapper{}
 }
 
-func (f forestMapper) MapFields(noiseGen noisegen.NoiseGen, terrain types.Terrain, resolution int, tileset map[int]*common.Tile) (Layers []*common.TileLayer) {
-	grass := make([]*common.Tile, 0)
-	bushes := make([]*common.Tile, 0)
-	trees := make([]*common.Tile, 0)
-	for row, _ := range terrain {
-		for col, _ := range terrain {
-			uniformW := tileset[grassGid].Image.Width()
-			uniformH := tileset[grassGid].Image.Height()
-			coord := engo.Point{float32(col) * uniformW, float32(row) * uniformH}
-			grass = mapGrass(coord, terrain[col][row], grass, tileset)
-			bushes = mapBush(coord, terrain[col][row], bushes)
-			trees = mapTree(coord, terrain[col][row], trees, tileset)
-			// get the tilesheets in order and in generic format
-			// sort.Sort(common.ByFirstgid(tmxLevel.Tilesets))
-			// ts := make([]*tilesheet, len(tmxLevel.Tilesets))
-			// for i, tts := range tmxLevel.Tilesets {
-			//	ts[i] = &tilesheet{tts.Image, tts.Firstgid}
-			// }
+func (f forestMapper) MapFields(noiseGen noisegen.NoiseGen, terrain types.Terrain, resolution int, startX int64, startZ int64, tileset map[int]*common.Tile) (Layers types.LayeredTiles, Width float32, Height float32) {
+	fmt.Printf("MAPFIELDS: %d %d", startX, startZ)
+	grass := make([][]*common.Tile, len(terrain))
+	bushes := make([][]*common.Tile, len(terrain))
+	trees := make([][]*common.Tile, len(terrain))
+
+	uniformW := tileset[grassGid].Image.Width()
+	uniformH := tileset[grassGid].Image.Height()
+	startXf := float32(startX * int64(resolution)) * uniformW
+	startZf := float32(startZ * int64(resolution)) * uniformH
+
+	for col, _ := range terrain {
+		grass[col] = make([]*common.Tile, len(terrain[col]))
+		bushes[col] = make([]*common.Tile, len(terrain[col]))
+		trees[col] = make([]*common.Tile, len(terrain[col]))
+		for row, _ := range terrain {
+			coord := engo.Point{startXf + float32(col) * uniformW, startZf + float32(row) * uniformH}
+			grass[col][row] = mapGrass(coord, terrain[col][row], tileset)
+			bushes[col][row] = mapBush(coord, terrain[col][row])
+			trees[col][row] = mapTree(coord, terrain[col][row], tileset)
 		}
 	}
-	layerGrass := common.TileLayer{Name: "grass", Tiles: grass}
-	layerBush := common.TileLayer{Name: "bushes", Tiles: bushes}
-	layerTree := common.TileLayer{Name: "trees", Tiles: trees}
-	return []*common.TileLayer{&layerGrass, &layerTree, &layerBush}
+
+	return types.LayeredTiles{grass, bushes, trees}, uniformW * float32(resolution), uniformH * float32(resolution)
 }
 
-func mapGrass(coord engo.Point, value float64, a []*common.Tile, tileset map[int]*common.Tile) []*common.Tile {
-	return append(a, &common.Tile{coord, tileset[grassGid].Image})
+func mapGrass(coord engo.Point, value float64, tileset map[int]*common.Tile) *common.Tile {
+	return &common.Tile{coord, tileset[grassGid].Image}
 }
 
-func mapBush(coord engo.Point, value float64, a []*common.Tile) []*common.Tile {
-	return a
+func mapBush(coord engo.Point, value float64) *common.Tile {
+	return nil
 }
 
-func mapTree(coord engo.Point, value float64, a []*common.Tile, tileset map[int]*common.Tile) []*common.Tile {
+func mapTree(coord engo.Point, value float64, tileset map[int]*common.Tile) *common.Tile {
 	if value > 0.06 {
-		a = append(a, &common.Tile{coord, tileset[treeGid].Image})
+		return &common.Tile{coord, tileset[treeGid].Image}
 	}
-	return a
+	return nil
 }

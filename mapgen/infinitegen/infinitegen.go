@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go-game/util"
 	_ "image/png"
+	"go-game/mapgen"
 )
 
 const emptyMapPath = "data/empty.tmx"
@@ -18,7 +19,7 @@ type objCoord struct {
 	x int64
 	z int64
 }
-type levelMap = map[objCoord]*common.Level
+type levelMap = map[objCoord]mapgen.Level
 
 type MapLoader struct {
 	noiseGen   noisegen.NoiseGen
@@ -48,7 +49,7 @@ func New(seed int64, resolution int) (*MapLoader, error) {
 	return &MapLoader{chunks: chunks, noiseGen: noiseGen, resolution: resolution, mapper: fieldMapper, initialMap: initialMap}, nil
 }
 
-func (m *MapLoader) GenerateMap(x int64, z int64) (*common.Level, error) {
+func (m *MapLoader) GenerateMap(x int64, z int64) (mapgen.Level, error) {
 	coord := objCoord{x, z}
 	objMap, ok := m.chunks[coord]
 	if !ok {
@@ -56,9 +57,8 @@ func (m *MapLoader) GenerateMap(x int64, z int64) (*common.Level, error) {
 		// 2) we generate the layers using a mapper
 		// 3) we add the layers to m
 		// Layers are always changed
-		newMap := *m.initialMap
-		newMap.TileLayers = m.mapper.MapFields(m.noiseGen, chunk.terrain, chunk.resolution, newMap.Tileset)
-		objMap = &newMap
+		newMap, w, h := m.mapper.MapFields(m.noiseGen, chunk.terrain, chunk.resolution, x, z, m.initialMap.Tileset)
+		objMap = mapgen.Level{newMap, w, h}
 		m.chunks[coord] = objMap
 	}
 

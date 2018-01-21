@@ -10,10 +10,11 @@ import (
 )
 
 func main() {
-	factory := func() (mapgen.MapGenerator, error) {
-		return infinitegen.New(10, 30)
+	resolution := 3
+	factory := func(res int) (mapgen.MapGenerator, error) {
+		return infinitegen.New(10, res)
 	}
-	ge := engine.NewGameEngine(factory)
+	ge := engine.NewGameEngine(resolution, factory)
 	opts := engo.RunOptions{
 		Title:  "TileMap Demo",
 		Width:  800,

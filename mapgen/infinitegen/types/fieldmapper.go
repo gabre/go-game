@@ -6,7 +6,8 @@ import (
 )
 
 type Terrain = [][]float64
+type LayeredTiles = [][][]*common.Tile
 
 type FieldMapper interface {
-	MapFields(noiseGen noisegen.NoiseGen, terrain Terrain, resolution int, tileset map[int]*common.Tile) (Layers []*common.TileLayer)
+	MapFields(noiseGen noisegen.NoiseGen, terrain Terrain, resolution int, startX int64, startZ int64, tileset map[int]*common.Tile) (Layers LayeredTiles, Width float32, Height float32)
 }
