@@ -17,8 +17,8 @@ func main() {
 	ge := engine.NewGameEngine(resolution, factory)
 	opts := engo.RunOptions{
 		Title:  "TileMap Demo",
-		Width:  800,
-		Height: 800,
+		Width:  1000,
+		Height: 1000,
 		AssetsRoot: getCwd(),
 	}
 	engo.Run(opts, ge)

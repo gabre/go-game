@@ -43,9 +43,11 @@ type GameEngine struct {
 
 	cache           map[engo.Point]bool
 
-	width           float32
-	height          float32
+	chunksetWidth  float32
+	chunksetHeight float32
 
+	chunkWidth     float32
+	chunkHeight    float32
 }
 
 type levelWithCoords struct {
@@ -88,10 +90,11 @@ func (e *GameEngine) Setup(w *ecs.World) {
 			e.camSystem = sys
 			println(e.camSystem.X(), e.camSystem.Y())
 			e.camTopLeftCoord = engo.Point{e.camSystem.X(), e.camSystem.Y()}
-			e.mapTopLeftCoord = engo.Point{0,0}
+			e.mapTopLeftCoord = engo.Point{0, 0}
 		}
 	}
-	w.AddSystem(NewChunkSystem(e, e.camSystem, r))
+	chSys := NewChunkSystem(e, e.camSystem, r)
+	w.AddSystem(chSys)
 
 	//engo.Mailbox.Listen("CameraMessage", func(msg engo.Message) {
 	//	 _, ok := msg.(common.CameraMessage)
@@ -99,8 +102,9 @@ func (e *GameEngine) Setup(w *ecs.World) {
 	//	    return
 	//	 }
 	//})
+	zeroX = e.camSystem.X()
+	zeroY = e.camSystem.Y()
 	e.renderNearestMapParts()
-	e.viewPoint = point{0, -3}
 }
 
 func (e *GameEngine) renderNearestMapPartsIfNeeded() {
@@ -111,6 +115,7 @@ func (e *GameEngine) renderNearestMapPartsIfNeeded() {
 }
 
 func (e *GameEngine) renderNearestMapParts() {
+	fmt.Printf("-----  %d %d\n", e.viewPoint.x, e.viewPoint.y)
 	// TODO this is not OK, adjust length
 	chunks := make([]levelWithCoords, 0)
 	for x := (e.viewPoint.x - r); x <= (e.viewPoint.x + r); x++ {
@@ -121,15 +126,13 @@ func (e *GameEngine) renderNearestMapParts() {
 				fmt.Printf("RENDERING: %d %d  (for %d %d)\n", x, y, e.viewPoint.x, e.viewPoint.y)
 				e.cache[p] = true
 				chunks = append(chunks, levelWithCoords{p, e.generateMapCoords(x, y)})
-			} else {
-				fmt.Printf("RENDERING: %d %d  (for %d %d)\n", x, y, e.viewPoint.x, e.viewPoint.y)
 			}
 		}
 	}
 
-	// TODO we zero width height here as we deleted the previous map (which is not true)
-	e.width = 0.0
-	e.height = 0.0
+	// TODO we zero chunksetWidth chunksetHeight here as we deleted the previous map (which is not true)
+	e.chunksetWidth = 0.0
+	e.chunksetHeight = 0.0
 	e.render(chunks...)
 }
 
@@ -145,13 +148,16 @@ func (e *GameEngine) render(chunks ...levelWithCoords) {
 	if (len(chunks) == 0) {
 		return
 	}
+	// TODO these should be in some kind of init
+	e.chunkHeight = chunks[0].level.Height
+	e.chunkWidth = chunks[0].level.Width
 	numOfChunksPerRow := float32(r + 1 + r)
-	e.height = chunks[0].level.Height * numOfChunksPerRow
-	e.width = chunks[0].level.Width * numOfChunksPerRow
+	e.chunksetHeight = chunks[0].level.Height * numOfChunksPerRow
+	e.chunksetWidth = chunks[0].level.Width * numOfChunksPerRow
+	fmt.Printf("W H %d %d\n", e.chunkWidth, e.chunkHeight)
 
 	// Create render and space components for each of the tiles in all layers
 	tileComponents := make([]*Tile, 0)
-	fmt.Println("ddd %d", len(chunks[0].level.Tiles[0]))
 	for layer := range chunks[0].level.Tiles {
 		for col := range chunks[0].level.Tiles[0] {
 			for _, chunk := range chunks {
