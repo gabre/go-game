@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	resolution := 3
+	resolution := 20
 	factory := func(res int) (mapgen.MapGenerator, error) {
 		return infinitegen.New(10, res)
 	}

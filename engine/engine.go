@@ -14,12 +14,6 @@ const r = int64(1) // [ -r ... 1 .. r ] tiles are rendered in each direction (ho
 const camZoomSpeed = 0.01 // 0.01x zoom for each scroll wheel click.
 const camMinZoom = 0.1
 
-type Tile struct {
-	ecs.BasicEntity
-	common.RenderComponent
-	common.SpaceComponent
-}
-
 type GameEngine struct {
 	resolution      int
 	mapGenFactory   func(int) (mapgen.MapGenerator, error)
@@ -28,20 +22,17 @@ type GameEngine struct {
 	renderSystem    *common.RenderSystem
 	camSystem       *common.CameraSystem
 
-	// TODO The following four are surely redundant.
+	init            bool
+
+	// TODO The following two are surely redundant.
 	// e.g. mapTopLeftCoord could be used with lastMapTopLeftCoord
 	// The following are measured in integer X Y coordinates (which chunk)
 	// Currently rendered chunkset's CENTER chunk's top left point's coordinates
 	viewPoint       point
 	// Last rendered chunkset's CENTER chunk's top left point's coordinates (equals `viewPoint` if everything is already rendered)
 	lastViewPoint   point
-	// The following are measured in "camera pixels":
-	// Camera (which can be "scrolled away" from `viewPoint`) top left coordinates
-	camTopLeftCoord engo.Point
-	// Actual chunkset's (map) top left point's coordinates
-	mapTopLeftCoord engo.Point
 
-	cache           map[engo.Point]bool
+	cache           map[engo.Point]mapgen.Level
 
 	chunksetWidth  float32
 	chunksetHeight float32
@@ -61,8 +52,8 @@ type point struct {
 
 func NewGameEngine(resolution int, generatorFactory func(int)(mapgen.MapGenerator, error)) *GameEngine {
 	p := point{0,0}
-	c := make(map[engo.Point]bool)
-	return &GameEngine{resolution: resolution, mapGenFactory: generatorFactory, camZoom: 1.0, viewPoint: p, lastViewPoint: p, cache: c}
+	c := make(map[engo.Point]mapgen.Level)
+	return &GameEngine{resolution: resolution, mapGenFactory: generatorFactory, camZoom: 1.0, viewPoint: p, lastViewPoint: p, cache: c, init: true}
 }
 
 func (e *GameEngine) Type() string {
@@ -89,8 +80,6 @@ func (e *GameEngine) Setup(w *ecs.World) {
 		case *common.CameraSystem:
 			e.camSystem = sys
 			println(e.camSystem.X(), e.camSystem.Y())
-			e.camTopLeftCoord = engo.Point{e.camSystem.X(), e.camSystem.Y()}
-			e.mapTopLeftCoord = engo.Point{0, 0}
 		}
 	}
 	chSys := NewChunkSystem(e, e.camSystem, r)
@@ -105,6 +94,7 @@ func (e *GameEngine) Setup(w *ecs.World) {
 	zeroX = e.camSystem.X()
 	zeroY = e.camSystem.Y()
 	e.renderNearestMapParts()
+	e.init = false
 }
 
 func (e *GameEngine) renderNearestMapPartsIfNeeded() {
@@ -117,23 +107,37 @@ func (e *GameEngine) renderNearestMapPartsIfNeeded() {
 func (e *GameEngine) renderNearestMapParts() {
 	fmt.Printf("-----  %d %d\n", e.viewPoint.x, e.viewPoint.y)
 	// TODO this is not OK, adjust length
+	toRemove := make([]levelWithCoords, 0)
 	chunks := make([]levelWithCoords, 0)
-	for x := (e.viewPoint.x - r); x <= (e.viewPoint.x + r); x++ {
-		for y := (e.viewPoint.y - r); y <= (e.viewPoint.y + r); y++ {
+	fmt.Printf("\n")
+	for i := -r; i <= r; i++ {
+		for j := -r; j <= r; j++ {
+			x := e.viewPoint.x + j
+			y := e.viewPoint.y + i
+			lx := e.lastViewPoint.x + j
+			ly := e.lastViewPoint.y + i
 			p := engo.Point{float32(x), float32(y)}
-			_, ok := e.cache[p]
+			lp := engo.Point{float32(lx), float32(ly)}
+			lvl, ok := e.cache[p]
 			if (!ok) {
 				fmt.Printf("RENDERING: %d %d  (for %d %d)\n", x, y, e.viewPoint.x, e.viewPoint.y)
-				e.cache[p] = true
-				chunks = append(chunks, levelWithCoords{p, e.generateMapCoords(x, y)})
+				lvl = e.generateMapCoords(x, y)
+				e.cache[p] = lvl
+			} else {
+				fmt.Printf("CACHED: %d %d  (for %d %d)\n", x, y, e.viewPoint.x, e.viewPoint.y)
 			}
+			oldlvl, oldWasCached := e.cache[lp]
+			if (!e.init && oldWasCached) {
+				toRemove = append(toRemove, levelWithCoords{lp, oldlvl})
+			}
+			chunks = append(chunks, levelWithCoords{p, lvl})
 		}
 	}
 
 	// TODO we zero chunksetWidth chunksetHeight here as we deleted the previous map (which is not true)
 	e.chunksetWidth = 0.0
 	e.chunksetHeight = 0.0
-	e.render(chunks...)
+	e.renderAndDeletePrevious(chunks, toRemove)
 }
 
 func (e *GameEngine) generateMapCoords(x int64, z int64) mapgen.Level {
@@ -144,7 +148,9 @@ func (e *GameEngine) generateMapCoords(x int64, z int64) mapgen.Level {
 	return levelData
 }
 
-func (e *GameEngine) render(chunks ...levelWithCoords) {
+// This function renders a bunch of chunks and deletes the previous (which has equal size)
+// len(chunks) must be equal to len(toRemove) or toRemove must be nil
+func (e *GameEngine) renderAndDeletePrevious(chunks []levelWithCoords, toRemove []levelWithCoords) {
 	if (len(chunks) == 0) {
 		return
 	}
@@ -157,34 +163,31 @@ func (e *GameEngine) render(chunks ...levelWithCoords) {
 	fmt.Printf("W H %d %d\n", e.chunkWidth, e.chunkHeight)
 
 	// Create render and space components for each of the tiles in all layers
-	tileComponents := make([]*Tile, 0)
+	tiles := make([]*mapgen.Tile, 0, len(chunks) * len(chunks[0].level.Tiles) * len(chunks[0].level.Tiles[0]) * len(chunks[0].level.Tiles[0][0]))
 	for layer := range chunks[0].level.Tiles {
-		for col := range chunks[0].level.Tiles[0] {
-			for _, chunk := range chunks {
-				// Keeping track of full map size
-
-				for row := range chunks[0].level.Tiles[0][0] {
-					tileElement := chunk.level.Tiles[layer][row][col]
-					if tileElement != nil && tileElement.Image != nil {
-						tile := &Tile{BasicEntity: ecs.NewBasic()}
-						tile.RenderComponent = common.RenderComponent{
-							Drawable: tileElement,
-							Scale:    engo.Point{1, 1},
+		for chunkrow := 0; chunkrow < int(numOfChunksPerRow); chunkrow++ {
+			for row := range chunks[0].level.Tiles[0] {
+				chunkrowStart := chunkrow * int(numOfChunksPerRow)
+				chunkrowEnd := chunkrowStart + int(numOfChunksPerRow)
+				for i := chunkrowStart; i < chunkrowEnd; i++ {
+					for col := range chunks[0].level.Tiles[0][0] {
+						if len(toRemove) != 0 {
+							r := toRemove[i].level.Tiles[layer][row][col]
+							if r != nil {
+								e.renderSystem.Remove(r.BasicEntity)
+							}
 						}
-						tile.SpaceComponent = common.SpaceComponent{
-							Position: tileElement.Point,
-							Width:    0,
-							Height:   0,
+						v := chunks[i].level.Tiles[layer][row][col]
+						// Add each of the tiles entities and its components to the render system
+						if v != nil {
+							tiles = append(tiles, v)
 						}
-						tileComponents = append(tileComponents, tile)
 					}
 				}
 			}
 		}
 	}
-
-	// Add each of the tiles entities and its components to the render system
-	for _, v := range tileComponents {
+	for _, v := range tiles {
 		e.renderSystem.Add(&v.BasicEntity, &v.RenderComponent, &v.SpaceComponent)
 	}
 }
