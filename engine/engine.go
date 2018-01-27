@@ -11,8 +11,7 @@ import (
 )
 const r = int64(1) // [ -r ... 1 .. r ] tiles are rendered in each direction (horizontally/vertically)
 				   // for renderNearestMapParts
-const camZoomSpeed = 0.01 // 0.01x zoom for each scroll wheel click.
-const camMinZoom = 0.1
+const numOfChunksPerRow = float32(r + 1 + r)
 
 type GameEngine struct {
 	resolution      int
@@ -24,18 +23,12 @@ type GameEngine struct {
 
 	init            bool
 
-	// TODO The following two are surely redundant.
-	// e.g. mapTopLeftCoord could be used with lastMapTopLeftCoord
-	// The following are measured in integer X Y coordinates (which chunk)
 	// Currently rendered chunkset's CENTER chunk's top left point's coordinates
 	viewPoint       point
 	// Last rendered chunkset's CENTER chunk's top left point's coordinates (equals `viewPoint` if everything is already rendered)
 	lastViewPoint   point
 
 	cache           map[engo.Point]mapgen.Level
-
-	chunksetWidth  float32
-	chunksetHeight float32
 
 	chunkWidth     float32
 	chunkHeight    float32
@@ -105,11 +98,8 @@ func (e *GameEngine) renderNearestMapPartsIfNeeded() {
 }
 
 func (e *GameEngine) renderNearestMapParts() {
-	fmt.Printf("-----  %d %d\n", e.viewPoint.x, e.viewPoint.y)
-	// TODO this is not OK, adjust length
-	toRemove := make([]levelWithCoords, 0)
-	chunks := make([]levelWithCoords, 0)
-	fmt.Printf("\n")
+	toRemove := make([]levelWithCoords, 0, numOfChunksPerRow * numOfChunksPerRow)
+	chunks := make([]levelWithCoords, 0, numOfChunksPerRow * numOfChunksPerRow)
 	for i := -r; i <= r; i++ {
 		for j := -r; j <= r; j++ {
 			x := e.viewPoint.x + j
@@ -120,11 +110,8 @@ func (e *GameEngine) renderNearestMapParts() {
 			lp := engo.Point{float32(lx), float32(ly)}
 			lvl, ok := e.cache[p]
 			if (!ok) {
-				fmt.Printf("RENDERING: %d %d  (for %d %d)\n", x, y, e.viewPoint.x, e.viewPoint.y)
 				lvl = e.generateMapCoords(x, y)
 				e.cache[p] = lvl
-			} else {
-				fmt.Printf("CACHED: %d %d  (for %d %d)\n", x, y, e.viewPoint.x, e.viewPoint.y)
 			}
 			oldlvl, oldWasCached := e.cache[lp]
 			if (!e.init && oldWasCached) {
@@ -134,9 +121,6 @@ func (e *GameEngine) renderNearestMapParts() {
 		}
 	}
 
-	// TODO we zero chunksetWidth chunksetHeight here as we deleted the previous map (which is not true)
-	e.chunksetWidth = 0.0
-	e.chunksetHeight = 0.0
 	e.renderAndDeletePrevious(chunks, toRemove)
 }
 
@@ -154,13 +138,10 @@ func (e *GameEngine) renderAndDeletePrevious(chunks []levelWithCoords, toRemove 
 	if (len(chunks) == 0) {
 		return
 	}
-	// TODO these should be in some kind of init
-	e.chunkHeight = chunks[0].level.Height
-	e.chunkWidth = chunks[0].level.Width
-	numOfChunksPerRow := float32(r + 1 + r)
-	e.chunksetHeight = chunks[0].level.Height * numOfChunksPerRow
-	e.chunksetWidth = chunks[0].level.Width * numOfChunksPerRow
-	fmt.Printf("W H %d %d\n", e.chunkWidth, e.chunkHeight)
+	if (e.init) {
+		e.chunkHeight = chunks[0].level.Height
+		e.chunkWidth = chunks[0].level.Width
+	}
 
 	// Create render and space components for each of the tiles in all layers
 	tiles := make([]*mapgen.Tile, 0, len(chunks) * len(chunks[0].level.Tiles) * len(chunks[0].level.Tiles[0]) * len(chunks[0].level.Tiles[0][0]))
